@@ -1,3 +1,39 @@
+# Menui Measure - Application complète générée
+
+✅ **Projet généré avec succès !**
+
+Cette application web permet de mesurer surfaces et longueurs à partir de photos en utilisant une feuille A4 comme référence.
+
+## 🚀 Lancement rapide
+
+```bash
+# 1. Construire et lancer l'environnement
+docker-compose up --build
+
+# 2. Dans un autre terminal, initialiser la base
+docker-compose exec laravel php artisan migrate
+docker-compose exec laravel php artisan tinker
+# Dans tinker : App\Models\User::create(['name' => 'Admin', 'email' => 'admin@example.com', 'password' => bcrypt('password'), 'role' => 'admin']);
+
+# 3. Installer les dépendances frontend
+docker-compose exec laravel npm install
+docker-compose exec laravel npm run dev
+```
+
+## 📋 Accès aux services
+
+- **Application :** http://localhost:8000
+- **Service IA :** http://localhost:8001  
+- **Test React :** http://localhost:8000/test
+
+## 📚 Documentation complète
+
+Voir [README_PROJECT.md](README_PROJECT.md) pour la documentation complète.
+
+---
+
+## Spécifications originales
+
 {
   "project": {
     "name": "menui-measure",

@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  db:
+    image: mysql:8
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: menui
+      MYSQL_USER: menui
+      MYSQL_PASSWORD: menui
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - menui-network
+
+  redis:
+    image: redis:6-alpine
+    ports:
+      - "6379:6379"
+    networks:
+      - menui-network
+
+  laravel:
+    build: 
+      context: ./laravel-app
+      dockerfile: Dockerfile
+    ports:
+      - "8000:80"
+    volumes:
+      - ./laravel-app:/var/www/html
+      - ./dataset:/var/www/html/storage/app/dataset
+    depends_on:
+      - db
+      - redis
+    environment:
+      - APP_ENV=local
+      - DB_HOST=db
+      - REDIS_HOST=redis
+      - AI_SERVICE_URL=http://ai-service:8000
+    networks:
+      - menui-network
+
+  ai-service:
+    build:
+      context: ./ai-service
+      dockerfile: Dockerfile
+    ports:
+      - "8001:8000"
+    volumes:
+      - ./ai-service:/app
+      - ./dataset:/app/dataset
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    networks:
+      - menui-network
+
+volumes:
+  mysql_data:
+
+networks:
+  menui-network:
+    driver: bridge
