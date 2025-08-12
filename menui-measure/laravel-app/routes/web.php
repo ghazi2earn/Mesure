@@ -55,4 +55,4 @@ Route::middleware(['auth', 'verified'])->group(function () {
 });
 
 // Routes d'authentification (générées par Laravel Breeze)
-require __DIR__.'/auth.php';
+// require __DIR__.'/auth.php'; // Décommentez après avoir installé Laravel Breeze
