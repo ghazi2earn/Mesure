@@ -177,6 +177,15 @@ chmod +x install.sh
 sudo ./install.sh
 ```
 
+### Option 3 : Développement local avec Laragon (Windows)
+Voir [deploy/laragon-deployment.md](deploy/laragon-deployment.md) pour le guide complet d'installation avec Laragon.
+
+#### Installation rapide avec Laragon
+1. Installez Laragon Full
+2. Clonez le projet dans `C:\laragon\www\menui-measure`
+3. Exécutez `windows-scripts\setup-laragon.bat`
+4. Démarrez avec `windows-scripts\start-all.bat`
+
 ## 🤝 Contribution
 
 1. Fork le projet
