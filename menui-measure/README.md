@@ -163,7 +163,19 @@ docker-compose exec ai-service pytest
 
 ## 🚀 Déploiement
 
-Voir [deploy/ovh.md](deploy/ovh.md) pour le guide complet de déploiement sur OVH.
+### Option 1 : Avec Docker (Recommandé)
+Voir [deploy/ovh.md](deploy/ovh.md) pour le guide complet de déploiement avec Docker sur OVH.
+
+### Option 2 : Sans Docker
+Voir [deploy/manual-deployment.md](deploy/manual-deployment.md) pour le déploiement manuel sans Docker.
+
+#### Installation rapide sans Docker
+```bash
+# Télécharger et exécuter le script d'installation
+wget https://raw.githubusercontent.com/votre-repo/menui-measure/main/deploy/install.sh
+chmod +x install.sh
+sudo ./install.sh
+```
 
 ## 🤝 Contribution
 
