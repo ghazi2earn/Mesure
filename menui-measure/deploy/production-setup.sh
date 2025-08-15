@@ -9,7 +9,7 @@ echo "🚀 Déploiement de Menui Mesure sur VPS"
 echo "======================================"
 
 # Variables
-PROJECT_DIR="/var/www/menui-measure"
+PROJECT_DIR="$HOME/menui-measure"
 GITHUB_REPO="votre-username/menui-measure"  # À modifier
 DOMAIN="votre-domaine.com"  # À modifier
 
