@@ -1,21 +1,13 @@
 <?php
 
-use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\GuestUploadController;
-use App\Http\Controllers\MeasurementController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\TaskController;
+use App\Http\Controllers\GuestUploadController;
+use App\Http\Controllers\MeasurementController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
-/*
-|--------------------------------------------------------------------------
-| Routes Web
-|--------------------------------------------------------------------------
-*/
-
-// Page d'accueil
 Route::get('/', function () {
     return Inertia::render('Welcome', [
         'canLogin' => Route::has('login'),
@@ -25,34 +17,32 @@ Route::get('/', function () {
     ]);
 });
 
-// Routes publiques pour les invités
-Route::prefix('guest')->name('guest.')->group(function () {
-    Route::get('/{token}', [GuestUploadController::class, 'show'])->name('show');
-    Route::post('/{token}/photos', [GuestUploadController::class, 'store'])->name('upload');
-    Route::get('/{token}/check', [GuestUploadController::class, 'checkToken'])->name('check');
-});
+Route::get('/dashboard', function () {
+    return Inertia::render('Dashboard');
+})->middleware(['auth', 'verified'])->name('dashboard');
 
-// Routes protégées par authentification
-Route::middleware(['auth', 'verified'])->group(function () {
-    // Dashboard
-    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-    
-    // Gestion des tâches
-    Route::resource('tasks', TaskController::class);
-    Route::post('/tasks/{task}/guest-link', [TaskController::class, 'generateGuestLink'])->name('tasks.guest-link');
-    Route::post('/tasks/{task}/photos/{photo}/process', [TaskController::class, 'reprocessPhoto'])->name('tasks.reprocess-photo');
-    Route::post('/tasks/{task}/photos/{photo}/measure', [MeasurementController::class, 'store'])->name('measurements.store');
-    
-    // Gestion des mesures
-    Route::get('/measurements/{measurement}', [MeasurementController::class, 'show'])->name('measurements.show');
-    Route::put('/measurements/{measurement}', [MeasurementController::class, 'update'])->name('measurements.update');
-    Route::delete('/measurements/{measurement}', [MeasurementController::class, 'destroy'])->name('measurements.destroy');
-    
-    // Profil utilisateur
+// Routes pour les tâches (authentifiées)
+Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    
+    // Routes des tâches
+    Route::resource('tasks', TaskController::class);
+    Route::post('/tasks/{task}/guest-link', [TaskController::class, 'generateGuestLink'])->name('tasks.guest-link');
+    Route::post('/tasks/{task}/photos/{photo}/reprocess', [TaskController::class, 'reprocessPhoto'])->name('tasks.photos.reprocess');
+    
+    // Routes des mesures
+    Route::post('/tasks/{task}/measurements', [MeasurementController::class, 'store'])->name('tasks.measurements.store');
+    Route::post('/tasks/{task}/photos/{photo}/measure', [MeasurementController::class, 'store'])->name('measurements.store');
+    Route::get('/measurements/{measurement}', [MeasurementController::class, 'show'])->name('measurements.show');
+    Route::put('/measurements/{measurement}', [MeasurementController::class, 'update'])->name('measurements.update');
+    Route::delete('/measurements/{measurement}', [MeasurementController::class, 'destroy'])->name('measurements.destroy');
 });
 
-// Routes d'authentification (générées par Laravel Breeze)
-// require __DIR__.'/auth.php'; // Décommentez après avoir installé Laravel Breeze
+// Routes publiques pour l'upload invité
+Route::get('/guest/{token}', [GuestUploadController::class, 'show'])->name('guest.upload');
+Route::post('/guest/{token}/photos', [GuestUploadController::class, 'store'])->name('guest.photos.store');
+Route::get('/guest/{token}/check', [GuestUploadController::class, 'checkToken'])->name('guest.check');
+
+require __DIR__.'/auth.php';

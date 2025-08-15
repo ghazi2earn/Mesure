@@ -15,8 +15,15 @@ from pathlib import Path
 app = FastAPI(title="Service IA de Mesure Menui", version="1.0.0")
 
 # Configuration
-UPLOAD_DIR = Path("/app/uploads")
-PROCESSED_DIR = Path("/app/processed")
+# Déterminer le répertoire de base selon l'environnement
+if os.name == 'nt':  # Windows
+    BASE_DIR = Path(__file__).parent
+    UPLOAD_DIR = BASE_DIR / "uploads"
+    PROCESSED_DIR = BASE_DIR / "processed"
+else:  # Docker/Linux
+    UPLOAD_DIR = Path("/app/uploads")
+    PROCESSED_DIR = Path("/app/processed")
+
 UPLOAD_DIR.mkdir(exist_ok=True)
 PROCESSED_DIR.mkdir(exist_ok=True)
 

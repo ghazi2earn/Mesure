@@ -11,13 +11,32 @@ use Illuminate\Support\Facades\Http;
 class MeasurementController extends Controller
 {
     /**
-     * Store a newly created measurement.
+     * Store a newly created measurement from task view.
      */
-    public function store(Request $request, Task $task, Photo $photo)
+    public function store(Request $request, Task $task, Photo $photo = null)
+    {
+        // Si aucune photo n'est fournie dans l'URL, la récupérer depuis les données
+        if (!$photo && $request->has('photo_id')) {
+            $photo = Photo::findOrFail($request->photo_id);
+        }
+
+        return $this->createMeasurement($request, $task, $photo);
+    }
+
+    /**
+     * Store a newly created measurement with photo parameter.
+     */
+    public function createMeasurement(Request $request, Task $task, Photo $photo)
     {
         $validated = $request->validate([
+            'photo_id' => 'sometimes|exists:photos,id',
             'type' => 'required|in:length,area',
             'points' => 'required|array',
+            'value_mm' => 'nullable|numeric',
+            'value_mm2' => 'nullable|numeric', 
+            'value_m2' => 'nullable|numeric',
+            'confidence' => 'nullable|numeric|between:0,1',
+            'processor_version' => 'nullable|string',
             'subtask_id' => 'nullable|exists:subtasks,id',
         ]);
 
@@ -35,33 +54,43 @@ class MeasurementController extends Controller
             ], 422);
         }
 
-        // Calculer les valeurs selon le type
+        // Préparer les données de mesure
         $measurementData = [
             'task_id' => $task->id,
             'photo_id' => $photo->id,
             'subtask_id' => $validated['subtask_id'] ?? null,
             'type' => $validated['type'],
             'points' => $validated['points'],
-            'confidence' => 0.95, // Confiance élevée car c'est une mesure manuelle
-            'processor_version' => '1.0.0',
+            'confidence' => $validated['confidence'] ?? 0.95, // Confiance élevée par défaut
+            'processor_version' => $validated['processor_version'] ?? '1.0.0',
         ];
 
+        // Utiliser les valeurs fournies ou les calculer
         if ($validated['type'] === 'length') {
-            // Calculer la distance entre deux points
-            $p1 = $validated['points'][0];
-            $p2 = $validated['points'][1];
-            $distancePx = sqrt(pow($p2['x'] - $p1['x'], 2) + pow($p2['y'] - $p1['y'], 2));
-            $distanceMm = $distancePx / $pixelsPerMm;
-            
-            $measurementData['value_mm'] = $distanceMm;
+            if (isset($validated['value_mm'])) {
+                $measurementData['value_mm'] = $validated['value_mm'];
+            } else {
+                // Calculer la distance entre deux points
+                $p1 = $validated['points'][0];
+                $p2 = $validated['points'][1];
+                $distancePx = sqrt(pow($p2['x'] - $p1['x'], 2) + pow($p2['y'] - $p1['y'], 2));
+                $distanceMm = $distancePx / $pixelsPerMm;
+                
+                $measurementData['value_mm'] = $distanceMm;
+            }
         } else {
-            // Calculer l'aire du polygone
-            $areaPx = $this->calculatePolygonArea($validated['points']);
-            $areaMm2 = $areaPx / ($pixelsPerMm * $pixelsPerMm);
-            $areaM2 = $areaMm2 / 1000000;
-            
-            $measurementData['value_mm2'] = $areaMm2;
-            $measurementData['value_m2'] = $areaM2;
+            if (isset($validated['value_mm2']) && isset($validated['value_m2'])) {
+                $measurementData['value_mm2'] = $validated['value_mm2'];
+                $measurementData['value_m2'] = $validated['value_m2'];
+            } else {
+                // Calculer l'aire du polygone
+                $areaPx = $this->calculatePolygonArea($validated['points']);
+                $areaMm2 = $areaPx / ($pixelsPerMm * $pixelsPerMm);
+                $areaM2 = $areaMm2 / 1000000;
+                
+                $measurementData['value_mm2'] = $areaMm2;
+                $measurementData['value_m2'] = $areaM2;
+            }
         }
 
         $measurement = Measurement::create($measurementData);

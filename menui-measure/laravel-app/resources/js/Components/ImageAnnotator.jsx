@@ -297,19 +297,79 @@ const ImageAnnotator = ({
                         )}
 
                         {/* Suggestions (affichées en gris) */}
-                        {suggestions.map((suggestion, idx) => (
-                            <Line
-                                key={`suggestion-${idx}`}
-                                points={suggestion.mask_poly.flat().map((val, i) => 
-                                    i % 2 === 0 ? val * scale : val * scale
-                                )}
-                                stroke="gray"
-                                strokeWidth={1}
-                                opacity={0.5}
-                                closed={suggestion.type === 'area'}
-                                dash={[5, 5]}
-                            />
-                        ))}
+                        {suggestions && suggestions.length > 0 && suggestions.map((suggestion, idx) => {
+                            if (!suggestion.mask_poly || !Array.isArray(suggestion.mask_poly)) {
+                                return null;
+                            }
+                            
+                            // Convertir les points et filtrer les valeurs invalides
+                            let points = [];
+                            try {
+                                if (suggestion.mask_poly.length > 0 && typeof suggestion.mask_poly[0] === 'object') {
+                                    // Format: [{x: 1, y: 2}, {x: 3, y: 4}]
+                                    points = suggestion.mask_poly.flatMap(point => {
+                                        const x = parseFloat(point.x);
+                                        const y = parseFloat(point.y);
+                                        if (isNaN(x) || isNaN(y)) return [];
+                                        return [x * scale, y * scale];
+                                    });
+                                } else {
+                                    // Format: [x1, y1, x2, y2] ou [[x1, y1], [x2, y2]]
+                                    points = suggestion.mask_poly.flat().map((val, i) => {
+                                        const num = parseFloat(val);
+                                        return isNaN(num) ? 0 : num * scale;
+                                    }).filter(val => !isNaN(val));
+                                }
+                                
+                                if (points.length < 4) return null; // Au moins 2 points
+                                
+                                const color = suggestion.type === 'area' ? '#3B82F6' : '#EF4444';
+                                
+                                return (
+                                    <Group key={`suggestion-${idx}`}>
+                                        <Line
+                                            points={points}
+                                            stroke={color}
+                                            strokeWidth={2}
+                                            opacity={0.8}
+                                            closed={suggestion.type === 'area'}
+                                            dash={[8, 4]}
+                                        />
+                                        {/* Points de mesure */}
+                                        {suggestion.mask_poly.filter((point, pointIdx) => {
+                                            if (typeof point === 'object') return true;
+                                            return pointIdx % 2 === 0; // Ne prendre que les coordonnées x pour éviter les doublons
+                                        }).map((point, pointIdx) => {
+                                            let x, y;
+                                            if (typeof point === 'object') {
+                                                x = point.x;
+                                                y = point.y;
+                                            } else {
+                                                const realIdx = pointIdx * 2;
+                                                x = suggestion.mask_poly[realIdx];
+                                                y = suggestion.mask_poly[realIdx + 1];
+                                            }
+                                            
+                                            if (isNaN(x) || isNaN(y)) return null;
+                                            
+                                            return (
+                                                <Circle
+                                                    key={`point-${pointIdx}`}
+                                                    x={x * scale}
+                                                    y={y * scale}
+                                                    radius={4}
+                                                    fill={color}
+                                                    opacity={0.8}
+                                                />
+                                            );
+                                        })}
+                                    </Group>
+                                );
+                            } catch (error) {
+                                console.warn('Erreur lors du rendu de la suggestion:', error, suggestion);
+                                return null;
+                            }
+                        })}
 
                         {/* Polygone en cours */}
                         {currentPolygon.length > 0 && (

@@ -45,18 +45,38 @@ class ProcessUploadedPhotoJob implements ShouldQueue
     public function handle(): void
     {
         try {
-            // Vérifier que la photo existe
-            if (!Storage::exists($this->photo->path)) {
+            // Vérifier que la photo existe dans le disque public
+            if (!Storage::disk('public')->exists($this->photo->path)) {
                 throw new Exception("Le fichier photo n'existe pas: {$this->photo->path}");
             }
 
+            // Vérifier si le service IA est configuré
+            $aiServiceUrl = config('services.ai.url');
+            
+            if (!$aiServiceUrl || $aiServiceUrl === 'http://localhost:8000') {
+                // Mode simulation - marquer comme traité sans appel au service IA
+                $this->photo->metadata = array_merge($this->photo->metadata ?? [], [
+                    'simulation_mode' => true,
+                    'processed_at' => now()->toDateTimeString(),
+                ]);
+                $this->photo->processed = true;
+                $this->photo->save();
+
+                Log::info("Photo traitée en mode simulation", [
+                    'photo_id' => $this->photo->id,
+                    'mode' => 'simulation',
+                ]);
+
+                return;
+            }
+
             // Préparer le fichier pour l'envoi
-            $filePath = Storage::path($this->photo->path);
+            $filePath = Storage::disk('public')->path($this->photo->path);
             
             // Appeler le service IA
             $response = Http::timeout(60)
                 ->attach('file', file_get_contents($filePath), $this->photo->filename)
-                ->post(config('services.ai.url') . '/analyze', [
+                ->post($aiServiceUrl . '/analyze', [
                     'metadata' => json_encode([
                         'expect_marker' => 'A4',
                         'photo_id' => $this->photo->id,

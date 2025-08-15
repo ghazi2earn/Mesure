@@ -107,7 +107,7 @@ class Task extends Model
      */
     public function getGuestUrl(): string
     {
-        return route('guest.show', ['token' => $this->guest_token]);
+        return route('guest.upload', ['token' => $this->guest_token]);
     }
 
     /**
