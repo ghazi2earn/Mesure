@@ -1,0 +1,88 @@
+# Dockerfile de production pour Laravel
+FROM php:8.2-fpm-alpine
+
+# Variables d'environnement
+ENV APP_ENV=production
+ENV APP_DEBUG=false
+
+# Installation des dépendances système
+RUN apk add --no-cache \
+    nginx \
+    supervisor \
+    curl \
+    zip \
+    unzip \
+    git \
+    mysql-client \
+    nodejs \
+    npm \
+    libpng-dev \
+    libjpeg-turbo-dev \
+    freetype-dev \
+    libzip-dev \
+    oniguruma-dev \
+    autoconf \
+    g++ \
+    make
+
+# Installation des extensions PHP
+RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install -j$(nproc) \
+        pdo_mysql \
+        mysqli \
+        mbstring \
+        exif \
+        pcntl \
+        bcmath \
+        gd \
+        zip
+
+# Installation de Redis extension
+RUN pecl install redis && docker-php-ext-enable redis
+
+# Installation de Composer
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
+# Définir le répertoire de travail
+WORKDIR /var/www/html
+
+# Copier les fichiers de dépendances
+COPY composer.json composer.lock package.json package-lock.json ./
+
+# Installation des dépendances PHP et Node.js
+RUN composer install --no-dev --optimize-autoloader --no-interaction \
+    && npm ci --only=production
+
+# Copier le code source
+COPY . .
+
+# Compilation des assets
+RUN npm run build
+
+# Permissions et optimisations
+RUN chown -R www-data:www-data /var/www/html \
+    && chmod -R 755 /var/www/html/storage \
+    && chmod -R 755 /var/www/html/bootstrap/cache
+
+# Configuration PHP
+COPY docker/php/php.ini /usr/local/etc/php/conf.d/custom.ini
+
+# Configuration Nginx
+COPY docker/nginx/laravel.conf /etc/nginx/http.d/default.conf
+
+# Configuration Supervisor
+COPY docker/supervisor/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
+# Optimisations Laravel
+RUN php artisan config:cache \
+    && php artisan route:cache \
+    && php artisan view:cache
+
+# Exposition du port
+EXPOSE 80
+
+# Script de démarrage
+COPY docker/scripts/start.sh /start.sh
+RUN chmod +x /start.sh
+
+CMD ["/start.sh"]
