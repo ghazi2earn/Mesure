@@ -1,0 +1,73 @@
+# Dockerfile utilisant l'image Python officielle avec multi-stage build
+# Stage 1: Builder
+FROM python:3.11-slim-bullseye as builder
+
+# Variables d'environnement pour le build
+ENV PIP_NO_CACHE_DIR=1
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# Installation des outils de build
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Création d'un environnement virtuel
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Copie et installation des dépendances
+COPY requirements-official.txt .
+RUN pip install --upgrade pip && \
+    pip install -r requirements-official.txt
+
+# Stage 2: Runtime
+FROM python:3.11-slim-bullseye
+
+# Métadonnées
+LABEL maintainer="Menui Measure Team"
+LABEL description="Service IA avec image Python officielle - Multi-stage"
+
+# Variables d'environnement
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PATH="/opt/venv/bin:$PATH"
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Installation uniquement des dépendances runtime nécessaires
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libglib2.0-0 \
+    libgl1-mesa-glx \
+    libgomp1 \
+    curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Copie de l'environnement virtuel depuis le stage builder
+COPY --from=builder /opt/venv /opt/venv
+
+# Création de l'utilisateur non-root
+RUN groupadd -r appuser && useradd -r -g appuser appuser
+
+# Création du répertoire de travail
+WORKDIR /app
+RUN chown appuser:appuser /app
+
+# Copie du code source avec bonnes permissions
+COPY --chown=appuser:appuser . .
+
+# Création des répertoires avec permissions
+RUN mkdir -p uploads processed && \
+    chown -R appuser:appuser uploads processed
+
+# Passage à l'utilisateur non-root
+USER appuser
+
+# Exposition du port
+EXPOSE 8000
+
+# Health check simple
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+# Point d'entrée optimisé
+CMD ["python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

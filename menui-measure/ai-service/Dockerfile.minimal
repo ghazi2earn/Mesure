@@ -1,0 +1,43 @@
+# Dockerfile minimal pour le service IA - sans GUI
+FROM python:3.11-slim
+
+# Métadonnées
+LABEL maintainer="Menui Measure Team"
+LABEL description="Service IA minimal pour l'analyse d'images"
+
+# Variables d'environnement
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV APP_ENV=production
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Installation uniquement des dépendances essentielles
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    libglib2.0-0 \
+    libgl1-mesa-glx \
+    wget \
+    curl \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Création du répertoire de travail
+WORKDIR /app
+
+# Copie et installation des dépendances Python
+COPY requirements.txt .
+RUN pip install --no-cache-dir --upgrade pip
+RUN pip install --no-cache-dir opencv-python-headless==4.8.1.78
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copie du code source
+COPY . .
+
+# Création des répertoires nécessaires
+RUN mkdir -p /app/uploads /app/processed
+
+# Exposition du port
+EXPOSE 8000
+
+# Commande de démarrage
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

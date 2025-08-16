@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  menui-ai-service:
+    image: ghazitounsi/menui-ai-service:latest
+    container_name: menui-ai-service
+    
+    # 🔄 RESTART AUTOMATIQUE
+    restart: unless-stopped
+    
+    # 🌐 PORTS
+    ports:
+      - "8000:8000"
+    
+    # 📁 VOLUMES PERSISTANTS
+    volumes:
+      - ai-uploads:/app/uploads
+      - ai-processed:/app/processed
+      - ai-logs:/app/logs
+    
+    # 🔧 VARIABLES D'ENVIRONNEMENT
+    environment:
+      - APP_ENV=production
+      - PYTHONUNBUFFERED=1
+      - LOG_LEVEL=INFO
+    
+    # 🏥 HEALTH CHECK
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    
+    # 🚀 RESOURCES LIMITS
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+    
+    # 📊 LOGGING
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    
+    # 🔗 NETWORKS
+    networks:
+      - menui-network
+
+# 📦 VOLUMES PERSISTANTS
+volumes:
+  ai-uploads:
+    driver: local
+  ai-processed:
+    driver: local
+  ai-logs:
+    driver: local
+
+# 🔗 NETWORKS
+networks:
+  menui-network:
+    driver: bridge

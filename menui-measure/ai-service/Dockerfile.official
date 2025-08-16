@@ -1,0 +1,91 @@
+# Dockerfile basé sur l'image officielle Python Docker
+FROM python:3.11-slim-bullseye
+
+# Métadonnées
+LABEL maintainer="Menui Measure Team"
+LABEL description="Service IA basé sur l'image officielle Python"
+LABEL version="1.0"
+
+# Variables d'environnement Python optimales
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONHASHSEED=random
+ENV PIP_NO_CACHE_DIR=1
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# Variables d'environnement pour l'application
+ENV APP_ENV=production
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Mise à jour du système de base
+RUN apt-get update && apt-get upgrade -y
+
+# Installation des dépendances système essentielles pour OpenCV
+# Approche progressive : d'abord les packages de base
+RUN apt-get install -y --no-install-recommends \
+    build-essential \
+    wget \
+    curl \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Installation des bibliothèques pour OpenCV (en séparé pour meilleure gestion d'erreurs)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender1 \
+    libgomp1 \
+    libgl1-mesa-glx \
+    libgthread-2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Installation des dépendances optionnelles (si elles échouent, ce n'est pas critique)
+RUN apt-get update && \
+    (apt-get install -y --no-install-recommends \
+    libgtk-3-0 \
+    libice6 \
+    libfontconfig1 \
+    libgstreamer1.0-0 \
+    libgstreamer-plugins-base1.0-0 \
+    ffmpeg \
+    || echo "Certains packages optionnels non installés") \
+    && rm -rf /var/lib/apt/lists/*
+
+# Création d'un utilisateur non-root pour la sécurité
+RUN groupadd -r appuser && useradd -r -g appuser appuser
+
+# Création du répertoire de travail avec bonnes permissions
+WORKDIR /app
+RUN chown appuser:appuser /app
+
+# Mise à jour de pip vers la dernière version
+RUN pip install --upgrade pip setuptools wheel
+
+# Copie du fichier requirements en tant que root
+COPY requirements.txt .
+
+# Installation des dépendances Python
+# Utilisation de opencv-python-headless pour éviter les problèmes GUI
+RUN pip install --no-cache-dir opencv-python-headless==4.8.1.78
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copie du code source
+COPY --chown=appuser:appuser . .
+
+# Création des répertoires nécessaires
+RUN mkdir -p /app/uploads /app/processed && \
+    chown -R appuser:appuser /app/uploads /app/processed
+
+# Passage à l'utilisateur non-root
+USER appuser
+
+# Exposition du port
+EXPOSE 8000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+# Commande de démarrage avec options optimisées
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]

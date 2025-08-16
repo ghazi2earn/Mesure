@@ -1,0 +1,74 @@
+# Configuration Nginx pour Laravel + Service IA
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    
+    server_name _;
+    root /var/www/menui/laravel-app/public;
+    index index.php index.html;
+
+    # Laravel Application
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    # PHP-FPM pour Laravel
+    location ~ \.php$ {
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:/var/run/php/php8.2-fpm.sock;
+        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+        include fastcgi_params;
+        fastcgi_read_timeout 300;
+    }
+
+    # Service IA - Proxy vers Python FastAPI
+    location /ai/ {
+        proxy_pass http://127.0.0.1:8001/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 300;
+        proxy_connect_timeout 300;
+        proxy_send_timeout 300;
+    }
+
+    # Documentation API du service IA
+    location /ai-docs {
+        proxy_pass http://127.0.0.1:8001/docs;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Fichiers statiques Laravel
+    location ~* \.(css|js|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+        access_log off;
+    }
+
+    # Storage Laravel (photos uploadées)
+    location /storage/ {
+        alias /var/www/menui/laravel-app/storage/app/public/;
+        expires 1y;
+        add_header Cache-Control "public";
+    }
+
+    # Sécurité - Interdire l'accès aux fichiers sensibles
+    location ~ /\. {
+        deny all;
+    }
+
+    location ~ /(vendor|tests|storage/logs|bootstrap/cache|\.env) {
+        deny all;
+    }
+
+    # Health check
+    location /health {
+        access_log off;
+        return 200 "healthy\n";
+        add_header Content-Type text/plain;
+    }
+}

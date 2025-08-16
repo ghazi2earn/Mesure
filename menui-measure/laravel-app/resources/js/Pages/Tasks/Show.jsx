@@ -235,17 +235,17 @@ export default function TasksShow({ task }) {
                                                 <div className="flex justify-between items-start mb-3">
                                                     <div className="flex items-center space-x-3">
                                                         <div className={`w-3 h-3 rounded-full ${measurement.type === 'length' ? 'bg-red-500' : 'bg-blue-500'}`}></div>
-                                                        <div>
+                                                    <div>
                                                             <p className="font-semibold text-gray-900">
                                                                 {measurement.type === 'length' ? '📏 Distance' : '⬜ Surface'}
-                                                            </p>
+                                                        </p>
                                                             <p className="text-xs text-gray-500">
                                                                 ID: {measurement.id} • {measurement.processor_version}
-                                                            </p>
+                                                        </p>
                                                         </div>
                                                     </div>
                                                     <div className="text-right">
-                                                        <div className="text-sm text-gray-500">
+                                                    <div className="text-sm text-gray-500">
                                                             {new Date(measurement.created_at).toLocaleDateString('fr-FR', {
                                                                 day: '2-digit',
                                                                 month: '2-digit', 

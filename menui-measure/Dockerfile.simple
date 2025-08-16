@@ -1,0 +1,43 @@
+# Dockerfile simplifié pour diagnostic
+FROM ubuntu:22.04
+
+# Variables d'environnement
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=Europe/Paris
+
+# Installation des dépendances de base
+RUN apt-get update && apt-get install -y \
+    wget curl git unzip tzdata \
+    nginx \
+    mysql-server mysql-client \
+    redis-server \
+    php8.1 php8.1-fpm php8.1-cli php8.1-common \
+    php8.1-mysql php8.1-zip php8.1-gd php8.1-mbstring \
+    php8.1-curl php8.1-xml php8.1-bcmath php8.1-redis \
+    php8.1-intl \
+    python3 python3-pip python3-venv \
+    nodejs npm \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Installation de Composer
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+
+# Configuration du timezone
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
+# Test Composer
+RUN composer --version
+
+# Création du répertoire de travail
+WORKDIR /var/www/menui
+
+# Copie du composer.json pour test
+COPY laravel-app/composer.json ./test-composer.json
+
+# Test simple d'installation
+RUN echo '{"require": {"php": ">=8.1"}}' > composer.json
+RUN composer install --no-dev --no-interaction
+
+# Point d'entrée simple
+CMD ["echo", "Build successful!"]

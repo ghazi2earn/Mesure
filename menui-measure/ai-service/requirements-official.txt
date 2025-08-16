@@ -1,0 +1,28 @@
+# Requirements optimisés pour l'image officielle Python
+# Versions spécifiques pour une meilleure compatibilité
+
+# Framework web
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+
+# Traitement des données
+python-multipart==0.0.6
+aiofiles==23.2.1
+
+# Vision par ordinateur - version headless pour serveurs
+opencv-python-headless==4.8.1.78
+numpy==1.26.2
+pillow==10.1.0
+
+# Validation des données
+pydantic==2.5.2
+
+# Sécurité et authentification
+python-jose[cryptography]==3.3.0
+
+# Client HTTP
+httpx==0.25.2
+
+# Dépendances de développement optionnelles (commentées pour la prod)
+# pytest==7.4.3
+# pytest-asyncio==0.21.1

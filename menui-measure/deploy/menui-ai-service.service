@@ -1,0 +1,62 @@
+[Unit]
+Description=Menui AI Service - Service IA de mesure et analyse d'images
+Documentation=https://github.com/ghazitounsi/menui-measure
+After=docker.service
+Requires=docker.service
+StartLimitIntervalSec=60
+StartLimitBurst=3
+
+[Service]
+Type=forking
+RemainAfterExit=true
+TimeoutStartSec=300
+TimeoutStopSec=120
+
+# 🔄 RESTART AUTOMATIQUE
+Restart=always
+RestartSec=10
+
+# 👤 UTILISATEUR
+User=root
+Group=docker
+
+# 📁 RÉPERTOIRE DE TRAVAIL
+WorkingDirectory=/opt/menui-ai-service
+
+# 🚀 COMMANDES DE DÉMARRAGE
+ExecStartPre=-/usr/bin/docker stop menui-ai-service
+ExecStartPre=-/usr/bin/docker rm menui-ai-service
+ExecStartPre=/usr/bin/docker pull ghazitounsi/menui-ai-service:latest
+
+ExecStart=/usr/bin/docker run -d \
+    --name menui-ai-service \
+    --restart=unless-stopped \
+    -p 8000:8000 \
+    -v menui-ai-uploads:/app/uploads \
+    -v menui-ai-processed:/app/processed \
+    -v menui-ai-logs:/app/logs \
+    -e APP_ENV=production \
+    -e PYTHONUNBUFFERED=1 \
+    --health-cmd="curl -f http://localhost:8000/health || exit 1" \
+    --health-interval=30s \
+    --health-timeout=10s \
+    --health-retries=3 \
+    --memory=1g \
+    --cpus=1.0 \
+    ghazitounsi/menui-ai-service:latest
+
+# 🛑 COMMANDES D'ARRÊT
+ExecStop=/usr/bin/docker stop menui-ai-service
+ExecStopPost=-/usr/bin/docker rm menui-ai-service
+
+# 📊 LOGGING
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=menui-ai-service
+
+# 🔒 SÉCURITÉ
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,57 @@
+# Fichiers de développement
+**/.git
+**/.gitignore
+**/.env
+**/.env.*
+**/node_modules
+**/vendor
+**/.npm
+**/.composer
+
+# Fichiers temporaires
+**/tmp
+**/temp
+**/.DS_Store
+**/Thumbs.db
+
+# Logs
+**/logs
+**/*.log
+
+# IDE
+**/.vscode
+**/.idea
+
+# Cache
+**/cache
+**/.cache
+
+# Laravel spécifique
+laravel-app/storage/logs/*
+laravel-app/storage/app/*
+laravel-app/storage/framework/cache/*
+laravel-app/storage/framework/sessions/*
+laravel-app/storage/framework/views/*
+!laravel-app/storage/app/public
+
+# Tests
+**/tests
+**/phpunit.xml
+
+# Documentation
+**/*.md
+!README.md
+
+# Scripts Windows
+windows-scripts/
+deploy/
+*.bat
+*.sh
+
+# Docker
+docker-compose*.yml
+Dockerfile*
+!Dockerfile.monolith
+
+
+

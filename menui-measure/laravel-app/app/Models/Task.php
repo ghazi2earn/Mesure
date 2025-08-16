@@ -18,10 +18,12 @@ class Task extends Model
         'guest_expires',
         'user_id',
         'assigned_to',
+        'metadata',
     ];
 
     protected $casts = [
         'guest_expires' => 'datetime',
+        'metadata' => 'array',
     ];
 
     /**

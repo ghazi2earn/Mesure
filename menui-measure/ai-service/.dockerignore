@@ -1,0 +1,50 @@
+# Fichiers et dossiers à ignorer lors du build Docker
+
+# Environnement virtuel local
+venv/
+env/
+.env
+
+# Cache Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Fichiers de test
+test_*
+*_test.py
+tests/
+
+# Documentation
+*.md
+docs/
+
+# Fichiers temporaires
+*.tmp
+*.temp
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Git
+.git/
+.gitignore
+
+# Uploads locaux (seront créés dans le conteneur)
+uploads/*
+processed/*
+!uploads/.gitkeep
+!processed/.gitkeep
+
+

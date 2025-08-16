@@ -1,0 +1,113 @@
+# Dockerfile monolithique pour Menui Mesure
+# Contient : MySQL, Redis, PHP/Laravel, Python/FastAPI, Nginx, Node.js
+FROM ubuntu:22.04
+
+# Variables d'environnement
+ENV DEBIAN_FRONTEND=noninteractive
+ENV APP_ENV=production
+ENV APP_DEBUG=false
+ENV TZ=Europe/Paris
+
+# Mise à jour et installation des dépendances système
+RUN apt-get update && apt-get install -y \
+    # Outils système
+    wget curl git unzip supervisor cron tzdata \
+    # Serveur web
+    nginx \
+    # MySQL
+    mysql-server mysql-client \
+    # Redis
+    redis-server \
+    # PHP et extensions
+    php8.2 php8.2-fpm php8.2-cli php8.2-common \
+    php8.2-mysql php8.2-zip php8.2-gd php8.2-mbstring \
+    php8.2-curl php8.2-xml php8.2-bcmath php8.2-redis \
+    php8.2-intl php8.2-imagick \
+    # Python et dépendances
+    python3 python3-pip python3-venv \
+    # Node.js et npm
+    nodejs npm \
+    # Dépendances OpenCV pour le service IA
+    libglib2.0-0 libsm6 libxext6 libxrender-dev \
+    libgomp1 libgl1-mesa-glx libglib2.0-0 \
+    # Outils utiles
+    htop nano vim \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Installation de Composer
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+
+# Configuration des fuseaux horaires
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
+# Création des utilisateurs et répertoires
+RUN groupadd -r menui && useradd -r -g menui menui
+RUN mkdir -p /var/www/menui /var/log/menui /var/lib/menui
+
+# ==== CONFIGURATION MYSQL ====
+RUN mkdir -p /var/run/mysqld
+RUN chown mysql:mysql /var/run/mysqld
+COPY docker/monolith/mysql/my.cnf /etc/mysql/conf.d/custom.cnf
+
+# ==== CONFIGURATION REDIS ====
+COPY docker/monolith/redis/redis.conf /etc/redis/redis.conf
+
+# ==== CONFIGURATION PHP-FPM ====
+COPY docker/monolith/php/www.conf /etc/php/8.2/fpm/pool.d/www.conf
+COPY docker/monolith/php/php.ini /etc/php/8.2/fpm/conf.d/99-custom.ini
+COPY docker/monolith/php/php.ini /etc/php/8.2/cli/conf.d/99-custom.ini
+
+# ==== CONFIGURATION NGINX ====
+COPY docker/monolith/nginx/nginx.conf /etc/nginx/nginx.conf
+COPY docker/monolith/nginx/sites/default /etc/nginx/sites-available/default
+
+# ==== COPIE DU CODE SOURCE ====
+WORKDIR /var/www/menui
+
+# Copie complète des sources
+COPY laravel-app/ ./laravel-app/
+COPY ai-service/ ./ai-service/
+
+# ==== INSTALLATION DES DÉPENDANCES LARAVEL ====
+WORKDIR /var/www/menui/laravel-app
+RUN composer install --no-dev --optimize-autoloader --no-interaction
+RUN npm ci --only=production
+RUN npm run build
+
+# ==== INSTALLATION DES DÉPENDANCES SERVICE IA ====
+WORKDIR /var/www/menui/ai-service
+RUN python3 -m venv venv
+RUN ./venv/bin/pip install --no-cache-dir -r requirements.txt
+
+# ==== CONFIGURATION DES PERMISSIONS ====
+RUN chown -R www-data:www-data /var/www/menui/laravel-app/storage
+RUN chown -R www-data:www-data /var/www/menui/laravel-app/bootstrap/cache
+RUN chmod -R 775 /var/www/menui/laravel-app/storage
+RUN chmod -R 775 /var/www/menui/laravel-app/bootstrap/cache
+
+# ==== OPTIMISATIONS LARAVEL ====
+WORKDIR /var/www/menui/laravel-app
+RUN php artisan config:cache || true
+RUN php artisan route:cache || true
+RUN php artisan view:cache || true
+
+# ==== RÉPERTOIRES DE LOGS ====
+RUN mkdir -p /var/log/menui
+
+# ==== SCRIPTS DE DÉMARRAGE ====
+COPY docker/monolith/scripts/ /usr/local/bin/
+RUN chmod +x /usr/local/bin/*.sh
+
+# ==== CONFIGURATION DE L'ENVIRONNEMENT ====
+COPY docker/monolith/env/production.env /var/www/menui/laravel-app/.env
+
+# Exposition des ports
+EXPOSE 80 443 3306 6379 8001
+
+# Volumes pour la persistance
+VOLUME ["/var/lib/mysql", "/var/lib/redis", "/var/www/menui/laravel-app/storage"]
+
+# Point d'entrée
+WORKDIR /var/www/menui
+CMD ["/usr/local/bin/start-all.sh"]

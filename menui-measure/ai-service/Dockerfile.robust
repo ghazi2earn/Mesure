@@ -1,0 +1,83 @@
+# Dockerfile robuste pour le service IA avec gestion d'erreurs améliorée
+FROM python:3.11-slim
+
+# Métadonnées
+LABEL maintainer="Menui Measure Team"
+LABEL description="Service IA pour l'analyse et la mesure d'images - Version robuste"
+
+# Variables d'environnement
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV APP_ENV=production
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Mise à jour du système et installation des outils de base
+RUN apt-get update -qq && \
+    apt-get install -y --no-install-recommends \
+    apt-utils \
+    ca-certificates \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Installation des dépendances système pour OpenCV avec gestion d'erreurs
+RUN apt-get update -qq && \
+    apt-get install -y --no-install-recommends \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender1 \
+    libgomp1 \
+    libgthread-2.0-0 \
+    libgl1-mesa-glx \
+    libice6 \
+    libfontconfig1 \
+    libgstreamer1.0-0 \
+    ffmpeg \
+    wget \
+    curl \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* \
+    && rm -rf /tmp/* \
+    && rm -rf /var/tmp/*
+
+# Installation optionnelle de packages GUI (peut être omise en production)
+RUN apt-get update -qq && \
+    (apt-get install -y --no-install-recommends \
+    libgtk-3-0 \
+    libxss1 \
+    libgstreamer-plugins-base1.0-0 \
+    || echo "Avertissement: Certains packages GUI non installés") \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Création du répertoire de travail
+WORKDIR /app
+
+# Copie des fichiers de dépendances
+COPY requirements.txt .
+
+# Mise à jour de pip et installation des dépendances Python
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copie du code source
+COPY . .
+
+# Création des répertoires nécessaires avec permissions appropriées
+RUN mkdir -p /app/uploads /app/processed && \
+    chmod 755 /app/uploads /app/processed
+
+# Création d'un utilisateur non-root pour la sécurité
+RUN useradd -m -u 1000 appuser && \
+    chown -R appuser:appuser /app
+USER appuser
+
+# Exposition du port
+EXPOSE 8000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
+
+# Commande de démarrage
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
